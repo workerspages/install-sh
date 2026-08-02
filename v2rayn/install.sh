@@ -7,107 +7,82 @@
 
 set -e
 
-# 定义颜色
+# 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# 配置项
 GITHUB_REPO="2dust/v2rayN"
-INSTALL_DIR="/opt/v2rayN"
-DESKTOP_FILE="/usr/share/applications/v2rayN.desktop"
-# 假设官方的 Linux 发行版包含 "linux-64" 或类似关键字
-# 如果官方命名不同，请修改此处的关键字，例如 "linux-x64"
-ASSET_KEYWORD="linux" 
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  开始安装/更新 v2rayN (Ubuntu Desktop) ${NC}"
 echo -e "${GREEN}========================================${NC}"
 
-# 1. 检查并安装必要依赖
-echo -e "${YELLOW}>> 检查并安装依赖 (curl, jq, unzip, wget)...${NC}"
-sudo apt-get update -yqq
-sudo apt-get install -yqq curl jq unzip wget desktop-file-utils
+# 1. 自动识别系统架构
+ARCH=$(uname -m)
+case "$ARCH" in
+    x86_64)
+        DEB_KEYWORD="linux-64.deb"
+        ;;
+    aarch64|arm64)
+        DEB_KEYWORD="linux-arm64.deb"
+        ;;
+    loongarch64)
+        DEB_KEYWORD="linux-loong64.deb"
+        ;;
+    riscv64)
+        DEB_KEYWORD="linux-riscv64.deb"
+        ;;
+    *)
+        echo -e "${RED}错误: 暂不支持当前系统架构 ($ARCH)${NC}"
+        exit 1
+        ;;
+esac
 
-# 2. 获取最新版本信息
-echo -e "${YELLOW}>> 正在从 GitHub API 获取最新版本信息...${NC}"
+echo -e "${YELLOW}>> 检测到系统架构: ${ARCH}${NC}"
+
+# 2. 检查基础工具依赖
+echo -e "${YELLOW}>> 检查必要工具 (curl, jq, wget)...${NC}"
+sudo apt-get update -yqq
+sudo apt-get install -yqq curl jq wget
+
+# 3. 获取 GitHub 最新 Release 信息
+echo -e "${YELLOW}>> 正在获取 GitHub 最新版本信息...${NC}"
 LATEST_RELEASE=$(curl -s "https://api.github.com/repos/${GITHUB_REPO}/releases/latest")
 VERSION=$(echo "$LATEST_RELEASE" | jq -r .tag_name)
 
 if [ "$VERSION" == "null" ] || [ -z "$VERSION" ]; then
-    echo -e "${RED}错误: 无法获取最新版本号，请检查网络或 GitHub API 限制。${NC}"
+    echo -e "${RED}错误: 无法获取最新版本号，请检查网络连接或 GitHub API 限制。${NC}"
     exit 1
 fi
 
 echo -e "${GREEN}>> 发现最新版本: ${VERSION}${NC}"
 
-# 3. 筛选 Linux 版本的下载链接
-DOWNLOAD_URL=$(echo "$LATEST_RELEASE" | jq -r ".assets[] | select(.name | ascii_downcase | contains(\"${ASSET_KEYWORD}\")) | .browser_download_url" | head -n 1)
-ASSET_NAME=$(echo "$LATEST_RELEASE" | jq -r ".assets[] | select(.name | ascii_downcase | contains(\"${ASSET_KEYWORD}\")) | .name" | head -n 1)
+# 4. 筛选对应架构的 .deb 安装包 (过滤掉 .sig 签名文件)
+DOWNLOAD_URL=$(echo "$LATEST_RELEASE" | jq -r ".assets[] | select(.name | endswith(\"${DEB_KEYWORD}\")) | .browser_download_url")
 
 if [ -z "$DOWNLOAD_URL" ]; then
-    echo -e "${RED}错误: 在 ${VERSION} 版本中未找到包含 '${ASSET_KEYWORD}' 的发布文件。${NC}"
-    echo -e "${YELLOW}注: v2rayN 官方目前可能未提供原生的 Linux 预编译包。推荐在 Ubuntu 上使用 v2rayA 或 nekoray。${NC}"
+    echo -e "${RED}错误: 未能在最新发布页中找到对应的 ${DEB_KEYWORD} 安装包。${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}>> 找到下载链接: ${DOWNLOAD_URL}${NC}"
-
-# 4. 下载并解压
+FILE_NAME=$(basename "$DOWNLOAD_URL")
 TMP_DIR=$(mktemp -d)
-cd "$TMP_DIR"
-echo -e "${YELLOW}>> 正在下载 ${ASSET_NAME} ...${NC}"
-wget -q --show-progress "$DOWNLOAD_URL" -O "$ASSET_NAME"
+TMP_FILE="${TMP_DIR}/${FILE_NAME}"
 
-echo -e "${YELLOW}>> 正在清理旧版本并安装到 ${INSTALL_DIR} ...${NC}"
-# 如果 v2rayN 正在运行，先终止进程
-pkill -f "v2rayN" || true
+# 5. 下载并调用 apt 安装
+echo -e "${YELLOW}>> 正在下载 ${FILE_NAME} ...${NC}"
+wget -q --show-progress "$DOWNLOAD_URL" -O "$TMP_FILE"
 
-sudo rm -rf "${INSTALL_DIR}"
-sudo mkdir -p "${INSTALL_DIR}"
-sudo unzip -q "$ASSET_NAME" -d "${INSTALL_DIR}"
+echo -e "${YELLOW}>> 正在安装/更新 ${FILE_NAME} ...${NC}"
+# 使用 apt 直接安装本地 deb 包，可自动补充缺少的系统依赖
+sudo apt-get install -y "$TMP_FILE"
 
-# 赋予执行权限 (假设主程序名为 v2rayN)
-if [ -f "${INSTALL_DIR}/v2rayN" ]; then
-    sudo chmod +x "${INSTALL_DIR}/v2rayN"
-    EXEC_PATH="${INSTALL_DIR}/v2rayN"
-else
-    # 尝试寻找目录下的可执行文件
-    EXEC_PATH=$(find "${INSTALL_DIR}" -maxdepth 2 -type f -executable | head -n 1)
-    if [ -n "$EXEC_PATH" ]; then
-        sudo chmod +x "$EXEC_PATH"
-    fi
-fi
-
-# 下载官方图标 (如果压缩包内没有，可以提供一个备用图标)
-ICON_PATH="${INSTALL_DIR}/v2rayN.png"
-if [ ! -f "$ICON_PATH" ]; then
-    sudo wget -q "https://raw.githubusercontent.com/${GITHUB_REPO}/master/v2rayN/v2rayN/v2rayN.ico" -O "${INSTALL_DIR}/v2rayN.ico" || true
-    # Ubuntu 桌面图标最好是 png/svg
-    ICON_PATH="${INSTALL_DIR}/v2rayN.ico"
-fi
-
-# 5. 创建桌面快捷方式
-echo -e "${YELLOW}>> 正在创建桌面快捷方式...${NC}"
-sudo tee "$DESKTOP_FILE" > /dev/null <<EOF
-[Desktop Entry]
-Name=v2rayN
-Comment=A GUI client for v2ray
-Exec=${EXEC_PATH}
-Icon=${ICON_PATH}
-Terminal=false
-Type=Application
-Categories=Network;
-EOF
-
-sudo update-desktop-database /usr/share/applications
-
-# 6. 清理临时文件
-cd ~
+# 6. 清理临时缓存文件
 rm -rf "$TMP_DIR"
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}  v2rayN ${VERSION} 安装/更新成功！${NC}"
-echo -e "${GREEN}  您可以在应用程序菜单中搜索 'v2rayN' 启动。${NC}"
+echo -e "${GREEN}  v2rayN ${VERSION} 安装/更新完成！${NC}"
+echo -e "${GREEN}  您可以直接在 Ubuntu 应用菜单中搜索 'v2rayN' 打开。${NC}"
 echo -e "${GREEN}========================================${NC}"
