@@ -1,4 +1,5 @@
 # Antigravity ID
+> https://antigravity.google/download
 
 ### 一键安装命令
 ```bash
