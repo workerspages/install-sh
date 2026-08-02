@@ -15,17 +15,15 @@ echo "==> 2/4 正在解压到 /opt 目录 (需要 sudo 权限，请根据提示�
 sudo mkdir -p /opt/antigravity-temp
 sudo tar -xzf "$TMP_DIR/ide.tar.gz" -C /opt/antigravity-temp
 
-# 动态获取解压出的文件夹名 (比如 "Antigravity IDE")
+# 动态获取解压出的文件夹名，并移动到最终的 /opt/antigravity 目录
 EXTRACTED_DIR=$(ls -1 /opt/antigravity-temp | head -n 1)
 sudo rm -rf /opt/antigravity
 sudo mv "/opt/antigravity-temp/$EXTRACTED_DIR" /opt/antigravity
 sudo rm -rf /opt/antigravity-temp
 
 echo "==> 3/4 寻找启动程序和图标..."
-# 这是 Electron 应用，主程序在根目录。排除沙盒文件和动态链接库，找到真正的可执行文件
-EXEC_SCRIPT=$(find /opt/antigravity -maxdepth 1 -type f -executable ! -name "chrome-sandbox" ! -name "*.so*" | head -n 1)
-
-# 直接使用刚才在输出中发现的图标路径
+# 找出根目录下体积最大的可执行文件作为主程序 (完美避开干扰文件)
+EXEC_SCRIPT=$(find /opt/antigravity -maxdepth 1 -type f -executable ! -name "*.so*" -exec ls -s {} + | sort -n -r | head -n 1 | awk '{for(i=2;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/ $//')
 ICON_PATH="/opt/antigravity/resources/app/resources/linux/code.png"
 
 if [ -z "$EXEC_SCRIPT" ]; then
@@ -34,20 +32,23 @@ if [ -z "$EXEC_SCRIPT" ]; then
     exit 1
 fi
 
-echo "==> 4/4 创建桌面快捷方式..."
+echo "==> 4/4 创建桌面快捷方式并配置权限..."
+# 写入桌面配置，强制加上刚才验证成功的 --no-sandbox 参数
 cat <<DESKTOP | sudo tee /usr/share/applications/antigravity.desktop > /dev/null
 [Desktop Entry]
 Version=1.0
 Type=Application
 Name=Antigravity IDE
 Icon=${ICON_PATH}
-Exec="${EXEC_SCRIPT}" %F
+Exec="${EXEC_SCRIPT}" --no-sandbox %F
 Comment=Antigravity Development Environment
 Categories=Development;IDE;
 Terminal=false
 DESKTOP
 
-# 修复 Electron 沙盒权限 (针对某些 Ubuntu 系统的安全要求)
+# 确保所有用户都有权限读取和执行
+sudo chmod -R 755 /opt/antigravity
+# 修复 Electron 沙盒权限 (防患于未然)
 sudo chown root:root /opt/antigravity/chrome-sandbox || true
 sudo chmod 4755 /opt/antigravity/chrome-sandbox || true
 
