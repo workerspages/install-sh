@@ -1,8 +1,45 @@
-这是一个结构非常清晰且实用的 **SOCKS5 代理抓取与连通性验证脚本**。它巧妙地利用了公开的 GitHub 代理池，并结合 `concurrent.futures` 实现了高效的并发测试。
+# SOCKS5 代理抓取与连通性验证脚本
 
-### 主要优化建议
 
-1. **补充 `User-Agent` 请求头**：B站 API 具有基础的反爬虫防护。如果不携带浏览器标示（User-Agent），部分代理发出的请求可能会直接被 B 站的 WAF（Web 应用防火墙）拦截，返回 403 错误或 HTML 验证码页面，导致实际上可用的代理被误判为无效。
-2. **处理 `json()` 解析异常**：当代理服务器返回了 HTML 错误页（如 502 Bad Gateway 或拦截页）时，调用 `resp.json()` 会触发 `JSONDecodeError` 导致当前线程崩溃。
-3. **避免使用裸 `except:**`：使用裸的 `except:` 会捕获包括 `KeyboardInterrupt`（Ctrl+C）在内的所有异常，导致你无法正常中断程序。建议具体捕获网络请求异常。
-4. **GitHub 访问连通性**：`raw.githubusercontent.com` 在国内网络环境下容易遭到 DNS 污染或阻断。如果获取数据源失败，可以考虑使用镜像站（例如 `raw.kkgithub.com`）。
+
+要执行这个托管在 GitHub 上的 Python 脚本，你需要先将它下载到本地，安装必要的依赖项，然后运行它。
+
+以下是适用于不同操作系统的具体执行步骤：
+
+### Linux / macOS 系统
+
+打开你的终端（Terminal），依次输入以下命令：
+
+```bash
+# 1. 下载脚本 (使用 curl 或 wget)
+curl -O https://raw.githubusercontent.com/workerspages/install-sh/refs/heads/main/proxy/proxy.py
+
+# 2. 安装运行所需的依赖 (主要是 requests 和 socks 代理支持)
+python3 -m pip install "requests[socks]"
+
+# 3. 运行脚本
+python3 proxy.py
+
+```
+
+### Windows 系统
+
+打开命令提示符（CMD）或 PowerShell，依次输入以下命令：
+
+```powershell
+# 1. 下载脚本 (Windows 10 及以上系统自带 curl)
+curl -o proxy.py https://raw.githubusercontent.com/workerspages/install-sh/refs/heads/main/proxy/proxy.py
+
+# 2. 安装运行所需的依赖
+python -m pip install "requests[socks]"
+
+# 3. 运行脚本
+python proxy.py
+
+```
+
+---
+
+### ⚠️ 安全建议
+
+在执行任何直接从网络上下载的脚本之前，良好的习惯是先查看一下它的源代码。你可以用记事本（Windows）、`cat proxy.py`（Linux/Mac）或直接在浏览器中打开那个 URL，确认其中没有恶意代码后再执行。
