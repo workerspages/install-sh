@@ -1,4 +1,4 @@
-sing-box四合一键安装脚本
+## sing-box四合一键安装脚本
 
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/workerspages/install-sh/refs/heads/main/laowang/sing-box.sh)
@@ -21,11 +21,9 @@ PORT=8888 bash <(curl -Ls https://raw.githubusercontent.com/workerspages/install
 查看节点信息和订阅:  `sb -c`
 一键卸载:   `sb -u`
 
----
---------------------- 分割线 ---------------------
----
 
-只安装节点使用这个(等于号后面的值改为自己的,变量之间有空格)：
+
+## 只安装节点使用这个(等于号后面的值改为自己的,变量之间有空格)：
 ```bash
 ARGO_DOMAIN=argo.xxx.xx ARGO_AUTH=eyxxx bash <(curl -Ls https://raw.githubusercontent.com/workerspages/install-sh/refs/heads/main/laowang/sbx.sh)
 ```
@@ -37,7 +35,7 @@ NEZHA_SERVER=nezha.xxx.com:8008 NEZHA_KEY=xxx ARGO_DOMAIN=aargo.xxx.xx ARGO_AUTH
 
 一键卸载命令：
 ```bash
-bash <(curl -Ls https://main.ssss.nyc.mn/sbx.sh) -u
+bash <(curl -Ls https://raw.githubusercontent.com/workerspages/install-sh/refs/heads/main/laowang/sbx.sh) -u
 ```
 
 安装在线SSH终端(ARGO_PORT默认8080):
