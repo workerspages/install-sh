@@ -40,5 +40,5 @@ bash <(curl -Ls https://raw.githubusercontent.com/workerspages/install-sh/refs/h
 
 安装在线SSH终端(ARGO_PORT默认8080):
 ```bash
-ARGO_DOMAIN=ssh.xxx.xx ARGO_AUTH=eyxxx bash <(curl -Ls https://raw.githubusercontent.com/workerspages/install-sh/refs/heads/main/laowang/gotty.sh)
+ARGO_PORT=8080 ARGO_DOMAIN=ssh.xxx.xx ARGO_AUTH=eyxxx bash <(curl -Ls https://raw.githubusercontent.com/workerspages/install-sh/refs/heads/main/laowang/gotty.sh)
 ```
